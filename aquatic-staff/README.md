@@ -2,7 +2,7 @@
 
 **Role:** Freelance / Independent Software Engineer (2023–2024)  
 **Stack:** Java/Kotlin, RuneLite plugin UI, Java server module (Spring/Hibernate), Gradle  
-**Links:** **Demo (≈1:12):** https://youtu.be/YOUR_UNLISTED_LINK  
+**Links:** **Demo (≈1:12):** ______
 *Reference from the server owner available on request. Private code not published.*
 
 ![Aquatic Staff – quick demo](assets/demo.gif)

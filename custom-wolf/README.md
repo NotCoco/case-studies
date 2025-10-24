@@ -4,7 +4,7 @@
 **Stack:** Blender, Python, Java/Kotlin (RuneLite/OpenOSRS), Gradle
 **Demo:** (GIF below)
 
-![Wolf – quick demo](demo.gif)
+![Wolf – quick demo](wolves.gif)
 
 ## TL;DR
 

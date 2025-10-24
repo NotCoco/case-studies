@@ -1,4 +1,4 @@
-# 🐺 Wolf — Case Study (Uncached Runtime + Ability Engine)
+# Wolf — Case Study (Uncached Runtime + Ability Engine)
 
 **Role:** Independent/Freelance Software Engineer (2025)
 **Stack:** Blender, Python, Java/Kotlin (Server + RuneLite/OpenOSRS Client), Gradle

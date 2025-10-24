@@ -1,41 +1,52 @@
-# Custom Wolf — Case Study (Uncached Runtime)
+# 🐺 Wolf — Case Study (Uncached Runtime + Ability Engine)
 
 **Role:** Independent/Freelance Software Engineer (2025)
-**Stack:** Blender, Python, Java/Kotlin (RuneLite/OpenOSRS), Gradle
+**Stack:** Blender, Python, Java/Kotlin (Server + RuneLite/OpenOSRS Client), Gradle
 **Demo:** (GIF below)
 
 ![Wolf – quick demo](wolves.gif)
 
 ## TL;DR
 
-Custom creature (**wolf**) loaded **outside the OSRS cache** using a tiny pipeline: **Blender → GLTF → Python baker → JSON → client pre‑warm**. First‑spawn hitch is eliminated by pre‑warming on login.
+A custom creature (**wolf**) and a new **Wolf Rush** special built on a lightweight **Ability Engine**. The client loads wolf assets **outside the OSRS cache** (Blender → GLTF → Python baker → JSON) and **pre‑warms** them on login for smooth first spawn. The server centralises preload/warm‑up, projectile listeners, and NPC movement overrides so abilities stay self‑contained.
 
 ## What I built
 
-* **Python “baker”** that reads GLB clips, extracts bone poses/weights, **quantizes** data, and writes per‑clip **JSON** + a `meta.json` (scale/bbox/fps/clip map).
-* **Gradle staging** task (`packWolf`) that copies baked files to `Cache/runtime/wolf/` for hot‑load.
-* Client‑side **RuntimeAnimLoader** + **NpcComposerHook** to load JSON at runtime and **compose** the animated mesh per NPC state.
-* **Pre‑warm on login** to parse/upload once so the first on‑map spawn is smooth.
+* **Ability framework** (Ability, AbilityRegistry, AbilityEngine) that centralises **preload/warm‑up hooks**, **projectile listeners**, and **movement overrides**.
+* **Wolf Rush ability** on top of that engine: spawns **preloaded virtual wolves**, tracks active spawns, and cleans them without leaking into projectile/movement code.
+* **Core integrations** that call the engine (server boot preload, player login warm‑up, projectile dispatch, NPC tile occupancy/pathfinding, admin commands).
+* **Safety utilities** (non‑blocking NPC tracking, random‑walk suppression, safe despawn tooling) to avoid deadlocks and lingering entities.
 
 ## Why it matters (impact)
 
-* **No cache repacks** → much faster iteration for meshes/animations.
-* Can **hot‑swap** content for dev/whitelisted users without touching indices.
-* **Smooth spawn** after pre‑warm; feels native in‑game.
+* Core gameplay code stays **agnostic** to specific abilities → fewer regressions when adding content.
+* New abilities **register once** and automatically get lifecycle, projectile, and movement helpers.
+* **Hot‑disable/debug** per ability for fast live testing and support.
+* Cleaner separation → easier review/audit; future content slots in alongside Wolf Rush with minimal wiring.
 
 ## How it works (short)
 
-* **Export** GLB per clip in Blender (idle/run/attack/death).
-* **Bake**: `python tools/gltf_to_runtime.py --in source --out baked --fps 24` → `baked/*.json` + `meta.json`.
-* **Stage**: `./gradlew :runelite:cache:packWolf` → `Cache/runtime/wolf/`.
-* **Client** on login: `prewarm("wolf", [idle, run, attack, death])` → **spawn wolf (ID 9901)**; state maps to clip.
+* **Server side**
+
+  * Abilities register with **AbilityRegistry**.
+  * **AbilityEngine.ensurePreloaded()** runs at server start; **AbilityEngine.warmFor(player)** runs on login.
+  * Projectiles call **AbilityEngine.onProjectileSent(attacker, target, gfx)**; the engine dispatches to listening abilities (Wolf Rush reacts to specific GFX IDs).
+  * When Wolf Rush spawns wolves, the engine marks them **non‑blocking**; movement, tile occupancy, and routing respect that shared flag.
+  * Admins can **despawn safely** via **AbilityEngine.despawnAll(<abilityKey>)** (e.g., `geclear`).
+
+* **Client side (uncached content path)**
+
+  * **Blender → GLTF** clips (idle/run/attack/death) → **Python baker** writes per‑clip **JSON** + `meta.json` (scale/bbox/fps).
+  * Gradle task **`packWolf`** stages to `Cache/runtime/wolf/`.
+  * On login the client **pre‑warms** (`RuntimeAnimLoader.prewarm(...)`) and composes via **NpcComposerHook**; first spawn is smooth.
 
 ## Pitfalls I solved
 
-* **Bone order & axis** mismatches → stable bone list, enforced **+Y up** on export & in loader.
-* **Weight renorm** after 4‑influence trim/quantize (u8) → renormalized on load.
-* **Foot sliding / speed** → store **fps** in `meta.json` and drive sampling by time; consistent root‑motion policy.
+* Removed **Wolf‑specific hooks** from Projectile/NPCMovement/Tile/RouteFinder; replaced with **engine checks** to avoid copy‑paste bugs.
+* Made preload/warm‑up **idempotent & failure‑tolerant** so one buggy ability can’t stall startup.
+* Managed concurrent NPC tracking with **weak sets / COW lists** to prevent leaks and races during despawn/logout.
+* Preserved legacy behaviour (**smooth spawn, non‑blocking movement**) while making it **configurable per ability** instead of hard‑coded.
 
 ## Notes
 
-* Private repo; reference available on request.
+* Private repo; reference available on request. Asset/code names trimmed for privacy.
